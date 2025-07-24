@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Checkout</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <h1>Checkout</h1>
+
+  <% if (!user) { %>
+    <p>You must <a href="/auth/login">login</a> to place an order.</p>
+  <% } else { %>
+    <h2>Your Cart</h2>
+    <ul>
+      <% cart.forEach(item => { %>
+        <li>
+          <%= item.name %> - Quantity: <%= item.quantity %> - ₹<%= item.price * item.quantity %>
+        </li>
+      <% }); %>
+    </ul>
+    <p><strong>Total:</strong> ₹<%= total_amount %></p>
+
+    <form action="/checkout" method="POST">
+      <input type="hidden" name="payment_method" value="COD">
+      <button type="submit">Place Order (Cash on Delivery)</button>
+    </form>
+  <% } %>
+</body>
+</html>

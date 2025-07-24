@@ -1,0 +1,481 @@
+openapi: 3.0.0
+info:
+  title: E-Commerce API
+  version: 1.0.0
+  description: |
+    API documentation for the E-Commerce application.
+    Note: If we have separate schema, then we no need to explain the details while integration.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UserRegisterRequest:
+      type: object
+      required: [username, email, password, name, phone_number]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        name:
+          type: string
+        phone_number:
+          type: string
+
+    UserLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        phone_number:
+          type: string
+        role:
+          type: string
+          enum: [admin, user]
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: float
+        stock:
+          type: integer
+        image_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PaginatedProducts:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        total_items:
+          type: integer
+          example: 100
+        total_pages:
+          type: integer
+          example: 10
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+
+    OrderItem:
+      type: object
+      properties:
+        id: { type: integer }
+        order_id: { type: integer }
+        product_id: { type: integer }
+        quantity: { type: integer }
+        price: { type: number, format: float }
+
+    Order:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        total_amount: { type: number, format: float }
+        status:
+          type: string
+          enum: [pending, completed, canceled]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+
+    PaginatedOrders:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        total_items:
+          type: integer
+          example: 50
+        total_pages:
+          type: integer
+          example: 5
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+
+    SystemReport:
+      type: object
+      properties:
+        product_inventory:
+          type: integer
+          example: 120
+        db_memory_usage:
+          type: string
+          example: "150MB"
+        storage_used:
+          type: string
+          example: "2GB"
+
+tags:
+  - name: Authentication
+    description: Register, login, and logout operations
+  - name: Users
+    description: User profile management
+  - name: Products
+    description: Product listing and management
+  - name: Orders
+    description: Place and manage orders
+  - name: Reports
+    description: Sales stats and system reports
+
+paths:
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegisterRequest"
+      responses:
+        '201': { description: User registered successfully }
+        '400': { description: Invalid input or user already exists }
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login user and return JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLoginRequest"
+      responses:
+        '200': { description: Login successful }
+        '401': { description: Invalid credentials }
+
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Get user profile by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: User profile details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+
+    put:
+      tags: [Users]
+      summary: Update user profile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                phone_number: { type: string }
+      responses:
+        '200': { description: Profile updated successfully }
+
+  /products:
+    get:
+      tags: [Products]
+      summary: Get all products (with pagination)
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        '200':
+          description: Paginated list of products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedProducts"
+
+    post:
+      tags: [Products]
+      summary: Add a new product (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Product"
+      responses:
+        '201': { description: Product created }
+
+  /products/{id}:
+    get:
+      tags: [Products]
+      summary: Get product by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        '404': { description: Product not found }
+
+    put:
+      tags: [Products]
+      summary: Update product details (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Product"
+      responses:
+        '200': { description: Product updated }
+        '404': { description: Product not found }
+
+    delete:
+      tags: [Products]
+      summary: Delete product by ID (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Product deleted }
+        '404': { description: Product not found }
+
+  /products/inventory:
+    put:
+      tags: [Products]
+      summary: Adjust product inventory (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product_id: { type: integer }
+                action:
+                  type: string
+                  enum: [increase, decrease]
+                quantity: { type: integer }
+      responses:
+        '200': { description: Inventory updated }
+
+  /orders/checkout:
+    post:
+      tags: [Orders]
+      summary: Place an order (Registered users only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                products:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      product_id: { type: integer }
+                      quantity: { type: integer }
+                payment_method:
+                  type: string
+                  enum: [COD]
+      responses:
+        '201': { description: Order placed successfully }
+
+  /orders:
+    get:
+      tags: [Orders]
+      summary: Get orders (User gets own, Admin gets all) with pagination
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        '200':
+          description: Paginated list of orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedOrders"
+
+  /orders/{id}/status:
+    put:
+      tags: [Orders]
+      summary: Update order status (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                new_status:
+                  type: string
+                  enum: [pending, completed, canceled]
+      responses:
+        '200': { description: Order status updated }
+
+  /orders/{id}/invoice:
+    get:
+      tags: [Orders]
+      summary: Download invoice for delivered order
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: PDF invoice }
+
+  /orders/viewed-products:
+    get:
+      tags: [Orders]
+      summary: Get recently viewed products (Registered users)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Recently viewed products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+
+  /reports/sales:
+    get:
+      tags: [Reports]
+      summary: Get sales statistics (Admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sales statistics
+
+  /system/report:
+    get:
+      tags: [Reports]
+      summary: Get current system report (inventory, DB, storage)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: System report detailst
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemReport"
+
+  /system/report/send:
+    post:
+      tags: [Reports]
+      summary: Trigger sending system report PDF via email (Admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: Report sent successfully }

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans flex">
+
+  <!-- Sidebar -->
+  <aside class="w-64 bg-blue-700 text-white h-screen p-4 fixed">
+    <h2 class="text-xl font-bold mb-8">Admin Panel</h2>
+    <ul class="space-y-4">
+      <li><button class="w-full text-left hover:bg-blue-600 p-2 rounded" onclick="showSection('dashboard')">Dashboard</button></li>
+      <li><button class="w-full text-left hover:bg-blue-600 p-2 rounded" onclick="showSection('users')">Users List</button></li>
+      <li><button class="w-full text-left hover:bg-blue-600 p-2 rounded" onclick="showSection('products')">Manage Products</button></li>
+      <li><a href="/auth/logout" class="block w-full text-left bg-red-500 hover:bg-red-600 p-2 rounded">Logout</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="ml-64 w-full p-6">
+    <!-- Dashboard Section -->
+    <section id="dashboard-section">
+      <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
+      <!-- Stats -->
+      <section class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <% ['Users','Products','Orders','Sales'].forEach((title,i) => { 
+           const val = [stats.totalUsers,stats.totalProducts,stats.totalOrders,'₹'+stats.totalSales][i]; %>
+          <div class="bg-white shadow p-6 text-center rounded">
+            <h2 class="text-lg font-semibold mb-2">Total <%= title %></h2>
+            <p class="text-3xl font-bold text-blue-600"><%= val %></p>
+          </div>
+        <% }) %>
+      </section>
+
+      <!-- Recent Orders -->
+      <section class="bg-white shadow rounded p-6 mb-10">
+        <h2 class="text-xl font-bold mb-4">Recent Orders</h2>
+        <table class="w-full text-left border">
+          <thead class="bg-gray-100"><tr><th>ID</th><th>User</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>
+            <% (recentOrders||[]).forEach(o => { %>
+              <tr>
+                <td class="p-2 border"><%= o.id %></td>
+                <td class="p-2 border"><%= o.User?.name || o.User?.username || o.User?.email || 'N/A' %></td>
+                <td class="p-2 border"><%= o.status %></td>
+                <td class="p-2 border"><%= o.created_at?.toISOString().slice(0,10) %></td>
+              </tr>
+            <% }) %>
+            <% if (!recentOrders || !recentOrders.length) { %>
+              <tr><td colspan="4" class="p-4 text-center text-gray-500">No recent orders.</td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </section>
+    </section>
+
+    <!-- Users List Section -->
+    <section id="users-section" class="hidden">
+      <h2 class="text-xl font-bold mb-4">Users List</h2>
+      <table class="w-full text-left border">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="p-2 border">ID</th>
+            <th class="p-2 border">Name</th>
+            <th class="p-2 border">Email</th>
+            <th class="p-2 border">Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% (users || []).forEach(u => { %>
+            <tr>
+              <td class="p-2 border"><%= u.id %></td>
+              <td class="p-2 border"><%= u.name %></td>
+              <td class="p-2 border"><%= u.email %></td>
+              <td class="p-2 border"><%= u.role %></td>
+            </tr>
+          <% }) %>
+          <% if (!users || !users.length) { %>
+            <tr><td colspan="4" class="p-4 text-center text-gray-500">No users found.</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Manage Products Section -->
+    <section id="products-section" class="hidden">
+      <h2 class="text-xl font-bold mb-4">Manage Products</h2>
+      <form action="/admin/products/add" method="POST" class="grid gap-4 mb-6 md:grid-cols-5">
+        <input type="text" name="name" placeholder="Name" required class="border p-2 rounded">
+        <input type="text" name="description" placeholder="Description" class="border p-2 rounded">
+        <input type="number" step="0.01" name="price" placeholder="Price" required class="border p-2 rounded">
+        <input type="number" name="stock" placeholder="Stock" required class="border p-2 rounded">
+        <input type="text" name="image_url" placeholder="Image URL" class="border p-2 rounded">
+        <button class="md:col-span-5 bg-blue-600 text-white py-2 rounded">Add Product</button>
+      </form>
+
+      <table class="w-full text-left border">
+        <thead class="bg-gray-100"><tr><th>Image</th><th>Name</th><th>Price</th><th>Stock</th><th>Actions</th></tr></thead>
+        <tbody id="productTableBody">
+          <% (products||[]).forEach(p => { %>
+            <tr data-id="<%= p.id %>">
+              <td class="p-2 border"><img src="<%= p.image_url || 'https://via.placeholder.com/80' %>" class="w-20 h-16 object-cover rounded"></td>
+              <td class="p-2 border"><%= p.name %></td>
+              <td class="p-2 border">₹<%= p.price %></td>
+              <td class="p-2 border"><%= p.stock %></td>
+              <td class="p-2 border">
+                <button type="button" class="bg-yellow-500 text-white px-3 py-1 rounded ml-2 edit-btn"
+                        data-id="<%= p.id %>" data-name="<%= p.name %>" data-price="<%= p.price %>"
+                        data-stock="<%= p.stock %>" data-image="<%= p.image_url %>">Edit</button>
+                <button type="button" class="bg-red-500 text-white px-3 py-1 rounded ml-2 delete-btn" data-id="<%= p.id %>">Del</button>
+              </td>
+            </tr>
+          <% }) %>
+          <% if (!products || !products.length) { %>
+            <tr><td colspan="5" class="p-4 text-center text-gray-500">No products found.</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded shadow-lg w-full max-w-md">
+      <h2 class="text-xl font-bold mb-4">Edit Product</h2>
+      <form id="editForm">
+        <input id="eName" name="name" class="border p-2 rounded w-full mb-3">
+        <input id="ePrice" name="price" type="number" class="border p-2 rounded w-full mb-3">
+        <input id="eStock" name="stock" type="number" class="border p-2 rounded w-full mb-3">
+        <input id="eImage" name="image_url" class="border p-2 rounded w-full mb-3">
+        <div class="flex justify-end gap-2">
+          <button type="button" id="closeModal" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
+          <button class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Script -->
+  <script>
+    // Show/Hide Sections
+    function showSection(section) {
+      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+      document.getElementById(section + '-section').classList.remove('hidden');
+    }
+    // Default dashboard
+    showSection('dashboard');
+
+    // Edit/Delete logic
+    const editModal = document.getElementById('editModal');
+    const editForm = document.getElementById('editForm');
+    const eName = document.getElementById('eName');
+    const ePrice = document.getElementById('ePrice');
+    const eStock = document.getElementById('eStock');
+    const eImage = document.getElementById('eImage');
+    const closeModal = document.getElementById('closeModal');
+    let currentEditId = null;
+
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.onclick = () => {
+        currentEditId = btn.dataset.id;
+        eName.value = btn.dataset.name;
+        ePrice.value = btn.dataset.price;
+        eStock.value = btn.dataset.stock;
+        eImage.value = btn.dataset.image;
+        editModal.classList.remove('hidden');
+      };
+    });
+
+    closeModal.onclick = () => editModal.classList.add('hidden');
+
+    editForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const payload = {
+        name: eName.value,
+        price: ePrice.value,
+        stock: eStock.value,
+        image_url: eImage.value
+      };
+      const res = await fetch(`/admin/products/${currentEditId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        const row = document.querySelector(`tr[data-id='${currentEditId}']`);
+        row.children[1].innerText = data.product.name;
+        row.children[2].innerText = '₹' + data.product.price;
+        row.children[3].innerText = data.product.stock;
+        row.querySelector('img').src = data.product.image_url || 'https://via.placeholder.com/80';
+        editModal.classList.add('hidden');
+      } else {
+        alert(data.message || 'Update failed');
+      }
+    };
+
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.onclick = async () => {
+        if (!confirm('Delete this product?')) return;
+        const res = await fetch(`/admin/products/${btn.dataset.id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          document.querySelector(`tr[data-id='${btn.dataset.id}']`).remove();
+        } else {
+          alert(data.message || 'Delete failed');
+        }
+      };
+    });
+  </script>
+</body>
+</html>
