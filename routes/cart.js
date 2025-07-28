@@ -1,26 +1,13 @@
-
 const express = require("express");
 const router = express.Router();
 const { Product } = require("../models");
 const { authenticateTokenOptional } = require("../middleware/auth");
+const requireLoginRedirect = require("../middleware/requireLoginRedirect");
 
-// Middleware: require login
-function requireLoginRedirect(req, res, next) {
-  const user = req.user || req.session.user;
-  if (!user) {
-    return res.status(401).json({
-      success: false,
-      message: "Please login to add items to cart",
-      redirect: "/auth/login?returnUrl=/main"
-    });
-  }
-  next();
-}
 
 // Attach user if token is available
 router.use(authenticateTokenOptional);
 
-// Ensure session cart
 router.use((req, res, next) => {
   if (!req.session.cart) req.session.cart = [];
   next();
@@ -36,15 +23,21 @@ router.post("/add/:id", requireLoginRedirect, async (req, res) => {
 
     const cart = req.session.cart;
     const existing = cart.find(i => i.id === product.id);
+
     if (existing) {
+      if (existing.quantity >= product.stock) {
+        return res.status(400).json({ success: false, message: "Stock limit reached" });
+      }
       existing.quantity += 1;
+      existing.stock = product.stock;
     } else {
       cart.push({
         id: product.id,
         name: product.name,
         price: product.price,
         imageUrl: product.image_url || "https://via.placeholder.com/150",
-        quantity: 1
+        quantity: 1,
+        stock: product.stock
       });
     }
 
@@ -58,7 +51,10 @@ router.post("/add/:id", requireLoginRedirect, async (req, res) => {
 
 // View cart
 router.get("/", requireLoginRedirect, (req, res) => {
-  res.render("cart", { cart: req.session.cart, user: req.user || req.session.user });
+  res.render("cart", {
+    cart: req.session.cart,
+    user: req.user || req.session.user
+  });
 });
 
 // Remove product
@@ -68,6 +64,55 @@ router.post("/remove/:id", requireLoginRedirect, (req, res) => {
   res.redirect("/cart");
 });
 
+// Increase quantity (AJAX)
+router.post("/increase/:id", async (req, res) => {
+  const cart = req.session.cart || [];
+  const productId = parseInt(req.params.id);
+  const product = await Product.findByPk(productId);
 
+  if (!product) {
+    return res.status(404).json({ error: "Product not found" });
+  }
+
+  const item = cart.find(i => i.id === productId);
+  if (item) {
+    if (item.quantity < product.stock) {
+      item.quantity += 1;
+      item.stock = product.stock;
+      req.session.cart = cart;
+      return res.json({
+        success: true,
+        quantity: item.quantity,
+        totalPrice: item.quantity * item.price
+      });
+    } else {
+      return res.status(400).json({ error: "Stock limit reached" });
+    }
+  }
+
+  return res.status(400).json({ error: "Item not in cart" });
+});
+
+// Decrease quantity (AJAX)
+router.post("/decrease/:id", (req, res) => {
+  const cart = req.session.cart || [];
+  const productId = parseInt(req.params.id);
+
+  const item = cart.find(i => i.id === productId);
+  if (item) {
+    if (item.quantity > 1) {
+      item.quantity -= 1;
+    } else {
+      req.session.cart = cart.filter(i => i.id !== productId);
+    }
+    return res.json({
+      success: true,
+      quantity: item.quantity || 0,
+      totalPrice: item.quantity * item.price || 0
+    });
+  }
+
+  return res.status(400).json({ error: "Item not in cart" });
+});
 
 module.exports = router;

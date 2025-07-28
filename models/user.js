@@ -16,7 +16,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       tableName: "users",
-      underscored: true, // maps created_at, updated_at
+      underscored: true, 
     }
   );
   User.associate = (models) => {

@@ -7,6 +7,8 @@ const YAML = require("yamljs");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
 const { sequelize } = require("./models");
+require("./cron/dailyReport");
+
 
 const app = express();
 
@@ -73,12 +75,6 @@ const ordersRoutes = require("./routes/orders");
 const productsRouter = require("./routes/products");
 
 
-
-
-
-
-
-
 app.use("/auth", authRoutes);
 app.use("/home", homeRoutes);
 app.use("/cart", cartRoutes);
@@ -111,8 +107,8 @@ async function startServer() {
     await sequelize.authenticate();
     console.log(" Database connected successfully");
 
-    // 2. Sync models (create tables if needed)
-    await sequelize.sync(); // add { alter: true } in dev if you want auto column updates
+    // 2. Sync models 
+    await sequelize.sync(); 
 
     // 3. Start Express server
     app.listen(PORT, () => {
@@ -122,7 +118,7 @@ async function startServer() {
 
   } catch (err) {
     console.error(" Database connection failed:", err);
-    process.exit(1); // optional: stop app if DB fails
+    process.exit(1); 
   }
 }
 

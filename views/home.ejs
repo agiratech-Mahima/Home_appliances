@@ -16,7 +16,11 @@
         <a href="/auth/login" class="text-blue-600 font-semibold hover:underline">Login</a>
         <a href="/auth/register" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Register</a>
       <% } else { %>
-  
+
+            <header class="bg-white shadow-md py-4 px-6 flex justify-between items-center">
+ 
+  <a href="/main" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Explore</a>
+</header>
 
         <a href="/auth/logout" class="text-red-600 hover:underline">Logout</a>
       <% } %>
@@ -31,15 +35,13 @@
 
   <main class="max-w-7xl mx-auto px-4 py-8">
 
-    
-
     <!-- Recently Viewed -->
     <% if (user && user.role === "user" && recent.length > 0) { %>
       <h3 class="text-2xl font-semibold mb-4">Recently Viewed Products</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
         <% recent.forEach(item => { %>
           <div class="bg-white rounded-lg shadow hover:shadow-lg transition p-4">
-            <img src="<%= item.Product.imageUrl || 'https://via.placeholder.com/150' %>" 
+            <img src="<%= item.Product.image_url || 'https://via.placeholder.com/150' %>" 
                  alt="<%= item.Product.name %>" 
                  class="rounded mb-4 w-full h-40 object-cover">
             <h4 class="text-lg font-bold mb-2"><%= item.Product.name %></h4>
@@ -64,6 +66,7 @@
 
           <!-- Add to Cart Button -->
           <button 
+            type="button"
             class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 w-full add-to-cart-btn" 
             data-id="<%= product.id %>">
             Add to Cart
@@ -78,17 +81,20 @@
     <p>&copy; <%= new Date().getFullYear() %> Appliances Oasis. All rights reserved.</p>
   </footer>
 
-  <script>
-   
-    (function () {
-  document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      window.location.href = '/auth/login';
-    });
-  });
-})();
-
-  </script>
+  
+  <!-- script -->
+  <% if (!user) { %>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+          btn.addEventListener('click', function (event) {
+            event.preventDefault();
+            window.location.href = '/auth/login';
+          });
+        });
+      });
+    </script>
+  <% } %>
 
 </body>
 </html>

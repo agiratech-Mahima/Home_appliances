@@ -36,13 +36,7 @@ function authenticateTokenOptional(req, res, next) {
   });
 }
 
-// Role-based authorization
-function authorizeRoles(...roles) {
-  return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) return res.sendStatus(403);
-    next();
-  };
-}
+
 
 // Admin-only middleware
 function authenticateAdmin(req, res, next) {
@@ -71,7 +65,7 @@ function authenticateUser(req, res, next) {
 module.exports = { 
   authenticateToken, 
   authenticateTokenOptional, 
-  authorizeRoles, 
+
   authenticateAdmin,
   authenticateUser 
 };

@@ -34,7 +34,7 @@
         <% }) %>
       </section>
 
-      <!-- Recent Orders -->
+    <!--Recent Orders -->
       <section class="bg-white shadow rounded p-6 mb-10">
         <h2 class="text-xl font-bold mb-4">Recent Orders</h2>
         <table class="w-full text-left border">
@@ -69,7 +69,8 @@
           </tr>
         </thead>
         <tbody>
-          <% (users || []).forEach(u => { %>
+          <% (users || []).filter(u => u.role !== 'admin').forEach(u => { %>
+
             <tr>
               <td class="p-2 border"><%= u.id %></td>
               <td class="p-2 border"><%= u.name %></td>
@@ -140,7 +141,7 @@
 
   <!-- Script -->
   <script>
-    // Show/Hide Sections
+    // Show/Hide Sections //need to change //layout
     function showSection(section) {
       document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
       document.getElementById(section + '-section').classList.remove('hidden');

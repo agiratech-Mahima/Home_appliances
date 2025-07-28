@@ -137,6 +137,25 @@ router.delete("/products/:id", authenticateAdmin, async (req, res) => {
   }
 });
 
+
+router.post("/orders/:id/status", authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findByPk(id);
+    if (!order) return res.status(404).send("Order not found");
+
+    order.status = "Delivered";
+    await order.save();
+
+    res.redirect("/admin/orders"); // or wherever your admin order list is
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error updating order status");
+  }
+});
+
+
+
 //yet to do.....
 router.post("/orders/update/:id", authenticateAdmin, async (req, res) => {
   const { new_status } = req.body;

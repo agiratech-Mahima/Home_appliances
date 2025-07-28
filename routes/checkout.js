@@ -19,7 +19,7 @@ router.get("/", authenticateUser, (req, res) => {
   res.render("checkout", { cart, user: req.user, total_amount });
 });
 
-//  Place Order (POST)
+//  Place Order 
 router.post("/", authenticateUser, async (req, res) => {
   try {
     const cart = req.session.cart || [];
@@ -58,7 +58,7 @@ router.post("/", authenticateUser, async (req, res) => {
       await product.save();
     }
 
-    // Clear cart after successful order
+   
     req.session.cart = [];
 
     res.render("orderSuccess", { orderId: order.id });

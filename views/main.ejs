@@ -11,9 +11,15 @@
 <body class="bg-gray-100 text-gray-900 font-sans">
 
   <!-- Navbar -->
-  <header class="bg-white shadow-md py-4 px-8 flex justify-between items-center">
-    <h1 class="text-2xl font-bold text-blue-600">🏠 Appliances Oasis</h1>
+ <header class="bg-white shadow-md py-4 px-8 flex justify-between items-center w-full">
+ 
+  <h1 class="text-2xl font-bold text-blue-600">🏠 Appliances Oasis</h1>
     <nav class="flex items-center gap-6">
+
+      <header class="bg-white shadow-md py-4 px-6 flex justify-between items-center">
+  <a href="/" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">⬅ Home</a>
+</header>
+
       <!-- Cart -->
       <a href="/cart" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
         Cart (<span id="cart-count"><%= cart.reduce((s,i)=>s+(i.quantity||0),0) %></span>)
@@ -25,12 +31,12 @@
     Recently Viewed
   </a>
 
-      <!-- Admin Control -->
-      <% if (user && user.role === "admin") { %>
+     
+      <!-- <% if (user && user.role === "admin") { %>
         <a href="/admin/add-product" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
           Add Product
         </a>
-      <% } %>
+      <% } %> -->
 
       <!-- Auth / Profile -->
       <% if (user) { %>
@@ -130,7 +136,7 @@
   </div>
 
   <!-- Scripts -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+ 
   <script>
     // Add to Cart AJAX
     document.querySelectorAll(".add-to-cart-btn").forEach(button => {

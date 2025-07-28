@@ -31,35 +31,123 @@
           <tbody>
             <% let grandTotal = 0; %>
             <% cart.forEach(item => { %>
-              <% const total = item.price * item.quantity; %>
-              <% grandTotal += total; %>
+              <% const total = item.price * item.quantity; grandTotal += total; %>
               <tr class="border-b hover:bg-gray-50">
                 <td class="p-3">
                   <img src="<%= item.imageUrl %>" alt="<%= item.name %>" class="w-16 h-16 object-cover rounded">
                 </td>
                 <td class="p-3 font-semibold"><%= item.name %></td>
                 <td class="p-3">₹<%= item.price %></td>
-                <td class="p-3"><%= item.quantity %></td>
-                <td class="p-3 font-semibold">₹<%= total %></td>
+                <td class="p-3">
+                  <div class="flex items-center gap-2">
+                    <button class="decrease-btn bg-red-500 text-white px-2 py-1 rounded" data-id="<%= item.id %>">-</button>
+                    <span class="item-qty" data-id="<%= item.id %>"><%= item.quantity %></span>
+                    <button class="increase-btn bg-green-500 text-white px-2 py-1 rounded" data-id="<%= item.id %>" data-stock="<%= item.stock || 99 %>">+</button>
+                  </div>
+                </td>
+                <td class="p-3 font-semibold item-total" data-id="<%= item.id %>" data-price="<%= item.price %>" data-total="<%= total %>">
+                  ₹<%= total.toFixed(2) %>
+                </td>
                 <td class="p-3">
                   <form action="/cart/remove/<%= item.id %>" method="POST">
                     <button type="submit" class="text-red-600 hover:underline">Remove</button>
                   </form>
                 </td>
               </tr>
-            <% }) %>
+            <% }); %>
           </tbody>
         </table>
-        <div class="mt-6 flex justify-between items-center">
-          <div class="text-xl font-bold text-gray-800">Grand Total: ₹<%= grandTotal %></div>
-         <a href="/checkout" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
-  Checkout
-</a>
 
+        <div class="mt-6 flex justify-between items-center">
+          <div class="text-xl font-bold text-gray-800">Grand Total: ₹<span id="grand-total"><%= grandTotal.toFixed(2) %></span></div>
+          <a href="/checkout" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">Checkout</a>
         </div>
       </div>
     <% } %>
   </main>
+
+
+  <script>
+  function updateGrandTotal() {
+    let grandTotal = 0;
+    document.querySelectorAll(".item-total").forEach(elem => {
+      const total = parseFloat(elem.dataset.total || 0);
+      grandTotal += total;
+    });
+    document.querySelector("#grand-total").textContent = grandTotal.toFixed(2);
+  }
+
+  async function handleQuantityChange(type, id, stock = null) {
+    const qtyElem = document.querySelector(`.item-qty[data-id="${id}"]`);
+    const totalElem = document.querySelector(`.item-total[data-id="${id}"]`);
+    const row = qtyElem.closest("tr");
+    const price = parseFloat(totalElem.dataset.price);
+    const incBtn = document.querySelector(`.increase-btn[data-id="${id}"]`);
+    const decBtn = document.querySelector(`.decrease-btn[data-id="${id}"]`);
+
+    
+    incBtn.disabled = true;
+    decBtn.disabled = true;
+
+    try {
+      const res = await fetch(`/cart/${type}/${id}`, { method: "POST" });
+      if (!res.ok) throw new Error("Server error");
+
+      const data = await res.json();
+      const newQty = data.quantity;
+
+      if (newQty > 0) {
+        qtyElem.textContent = newQty;
+        const newTotal = newQty * price;
+        totalElem.textContent = `₹${newTotal.toFixed(2)}`;
+        totalElem.dataset.total = newTotal;
+
+        // Enable/disable "+" based on stock
+        if (stock !== null) {
+          if (newQty >= stock) {
+            incBtn.classList.add("opacity-50", "pointer-events-none");
+          } else {
+            incBtn.classList.remove("opacity-50", "pointer-events-none");
+          }
+        }
+      } else {
+        row.remove(); 
+      }
+
+      updateGrandTotal();
+
+    } catch (err) {
+      alert("Something went wrong. Please try again.");
+    } finally {
+      // Re-enable buttons
+      incBtn.disabled = false;
+      decBtn.disabled = false;
+    }
+  }
+
+  document.querySelectorAll(".increase-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      const stock = parseInt(btn.dataset.stock);
+      const currentQty = parseInt(document.querySelector(`.item-qty[data-id="${id}"]`).textContent);
+
+      if (currentQty >= stock) {
+        alert("Stock limit reached!");
+        btn.classList.add("opacity-50", "pointer-events-none");
+        return;
+      }
+
+      handleQuantityChange("increase", id, stock);
+    });
+  });
+
+  document.querySelectorAll(".decrease-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      handleQuantityChange("decrease", id);
+    });
+  });
+</script>
 
 </body>
 </html>
