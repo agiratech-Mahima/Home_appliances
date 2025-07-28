@@ -3,23 +3,30 @@ const fs = require("fs");
 const nodemailer = require("nodemailer");
 const os = require("os");
 const path = require("path");
+const moment = require("moment");
 const { sequelize, Product } = require("../models");
 
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 (async () => {
+  console.log("🕐 Waiting 5 minutes before sending report...");
+  await delay(5 * 60 * 1000); // 5 minutes in ms
+
   try {
     console.log("🚀 Starting daily report task...");
 
     // 1. Fetch Data
     console.time("DB Queries");
     const totalProducts = await Product.count();
-const lowStockProducts = await Product.findAll({
-  where: {
-    stock: {
-      [sequelize.Sequelize.Op.lt]: 10,
-    },
-  },
-});
-
+    const lowStockProducts = await Product.findAll({
+      where: {
+        stock: {
+          [sequelize.Sequelize.Op.lt]: 10,
+        },
+      },
+    });
 
     const dbStats = await sequelize.query("SHOW TABLE STATUS", {
       type: sequelize.QueryTypes.SELECT,
@@ -44,7 +51,7 @@ const lowStockProducts = await Product.findAll({
     doc.pipe(fs.createWriteStream(filePath));
 
     doc.fontSize(18).text("🧾 Daily System Report", { align: "center" }).moveDown();
-    doc.fontSize(12).text(`🗓 Date: ${new Date().toLocaleString()}`).moveDown();
+    doc.fontSize(12).text(`🗓 Date: ${moment().format("YYYY-MM-DD HH:mm:ss")}`).moveDown();
     doc.text(`📦 Total Products: ${totalProducts}`);
     doc.text(`⚠️ Low Stock Products (<10): ${lowStockProducts.length}`).moveDown();
     doc.text(`💾 Database Size: ${dbSizeMB} MB`);
@@ -54,13 +61,13 @@ const lowStockProducts = await Product.findAll({
     console.timeEnd("PDF Generation");
 
     // 4. Email Setup
-    console.log("Sending email...");
+    console.log("📤 Sending email...");
     console.time("Email Send");
     let transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: "mahimakumari416@gmail.com", 
-        pass: "aweunxcyacczatyg", 
+        user: "mahimakumari416@gmail.com",
+        pass: "aweunxcyacczatyg",
       },
     });
 
@@ -78,8 +85,8 @@ const lowStockProducts = await Product.findAll({
     });
     console.timeEnd("Email Send");
 
-    console.log(" Report sent successfully.");
+    console.log("✅ Report sent successfully.");
   } catch (err) {
-    console.error(" Failed to send report:", err);
+    console.error("❌ Failed to send report:", err);
   }
 })();
