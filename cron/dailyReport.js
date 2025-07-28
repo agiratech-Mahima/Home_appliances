@@ -116,54 +116,39 @@
 
 
 
-// ✅ Inline log before any import
-require("fs").appendFileSync("./cron-log.txt", `[${new Date().toISOString()}] 🟢 Script started - before imports\n`);
-
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const nodemailer = require("nodemailer");
 const os = require("os");
 const path = require("path");
 const moment = require("moment");
+const { sequelize, Product } = require("../models");
 
-// ✅ Try-catch around model imports to debug early crash
-let sequelize, Product;
-try {
-  const models = require("../models"); // 🔁 Adjust path if needed
-  sequelize = models.sequelize;
-  Product = models.Product;
-} catch (err) {
-  fs.appendFileSync("./cron-log.txt", `[${new Date().toISOString()}] ❌ Failed to import models: ${err.message}\n`);
-  console.error("❌ Import error:", err);
-  process.exit(1); // Stop further execution
-}
-
-// ✅ Logging helper
+// Log to file
 const log = (msg) => {
   const logMsg = `[${new Date().toISOString()}] ${msg}\n`;
   fs.appendFileSync(path.join(__dirname, "cron-log.txt"), logMsg);
 };
 
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+// Simple delay
+const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 (async () => {
+  log("🟡 Started script...");
   log("🕐 Waiting 1 minute before sending report...");
-  await delay(1 * 60 * 1000); // ⏱️ 1 min for testing
+  await delay(1 * 60 * 1000); // 1 minute
 
   try {
     log("🚀 Starting daily report task...");
 
-    // 1. Fetch data
+    // Step 1: Fetch Data
     const totalProducts = await Product.count();
+    log(`📦 Total Products: ${totalProducts}`);
+
     const lowStockProducts = await Product.findAll({
-      where: {
-        stock: {
-          [sequelize.Sequelize.Op.lt]: 10,
-        },
-      },
+      where: { stock: { [sequelize.Sequelize.Op.lt]: 10 } },
     });
+    log(`⚠️ Low Stock Products: ${lowStockProducts.length}`);
 
     const dbStats = await sequelize.query("SHOW TABLE STATUS", {
       type: sequelize.QueryTypes.SELECT,
@@ -172,16 +157,21 @@ function delay(ms) {
       (sum, table) => sum + table.Data_length + table.Index_length,
       0
     );
+    const dbSizeMB = (dbSize / (1024 * 1024)).toFixed(2);
+    log(`💾 Database size: ${dbSizeMB} MB`);
 
-    // 2. System Info
+    // Step 2: System Info
     const ramUsed = os.totalmem() - os.freemem();
     const ramUsedMB = (ramUsed / (1024 * 1024)).toFixed(2);
-    const dbSizeMB = (dbSize / (1024 * 1024)).toFixed(2);
+    log(`🖥 RAM Used: ${ramUsedMB} MB`);
 
-    // 3. Generate PDF
+    // Step 3: Generate PDF
     const filePath = path.join(__dirname, "report.pdf");
+    log(`📄 Creating PDF at: ${filePath}`);
+
     const doc = new PDFDocument();
-    doc.pipe(fs.createWriteStream(filePath));
+    const writeStream = fs.createWriteStream(filePath);
+    doc.pipe(writeStream);
 
     doc.fontSize(18).text("🧾 Daily System Report", { align: "center" }).moveDown();
     doc.fontSize(12).text(`🗓 Date: ${moment().format("YYYY-MM-DD HH:mm:ss")}`).moveDown();
@@ -189,25 +179,27 @@ function delay(ms) {
     doc.text(`⚠️ Low Stock Products (<10): ${lowStockProducts.length}`).moveDown();
     doc.text(`💾 Database Size: ${dbSizeMB} MB`);
     doc.text(`🖥 RAM Used: ${ramUsedMB} MB`);
-
     doc.end();
-    log("📝 PDF generated successfully.");
 
-    // Wait for file to flush
-    await new Promise((res) => setTimeout(res, 3000));
+    await new Promise((res, rej) => {
+      writeStream.on("finish", res);
+      writeStream.on("error", rej);
+    });
 
-    // 4. Email Setup
-    let transporter = nodemailer.createTransport({
+    log("✅ PDF generated successfully.");
+
+    // Step 4: Email
+    const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         user: "mahimakumari416@gmail.com",
-        pass: "aweunxcyacczatyg", // 🔒 App password
+        pass: "aweunxcyacczatyg",
       },
       logger: true,
       debug: true,
     });
 
-    const emailResult = await transporter.sendMail({
+    const result = await transporter.sendMail({
       from: '"System Report" <mahimakumari416@gmail.com>',
       to: "mahimamahi1601@gmail.com",
       subject: "📝 Daily System Report",
@@ -215,13 +207,10 @@ function delay(ms) {
       attachments: [{ filename: "report.pdf", path: filePath }],
     });
 
-    log("✅ Report sent successfully.");
-    log(`📧 Email Message ID: ${emailResult.messageId}`);
+    log("📤 Email sent successfully.");
+    log(`📧 Message ID: ${result.messageId}`);
   } catch (err) {
-    log(`❌ Failed to send report: ${err.message}`);
+    log(`❌ ERROR: ${err.message}`);
     console.error(err);
   }
 })();
-
-
-
