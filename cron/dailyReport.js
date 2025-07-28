@@ -69,6 +69,9 @@ function delay(ms) {
         user: "mahimakumari416@gmail.com",
         pass: "aweunxcyacczatyg",
       },
+      logger: true,
+      debug: true,
+
     });
 
     await transporter.sendMail({
