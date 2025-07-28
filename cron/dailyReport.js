@@ -6,19 +6,21 @@ const path = require("path");
 const moment = require("moment");
 const { sequelize, Product } = require("../models");
 
-// Optional: Write logs to a file
+// ✅ Log to file immediately
+const logFilePath = path.join(__dirname, "cron-log.txt");
 const log = (msg) => {
   const logMsg = `[${new Date().toISOString()}] ${msg}\n`;
-  fs.appendFileSync(path.join(__dirname, "cron-log.txt"), logMsg);
+  console.log(logMsg); // also show in terminal
+  fs.appendFileSync(logFilePath, logMsg);
 };
 
 function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 (async () => {
-  log("🕐 Waiting 5 minutes before sending report...");
-  await delay(5 * 60 * 1000);
+  log("✅ Script started. Waiting 1 minute before sending report...");
+  await delay(1 * 60 * 1000); // 1 minute for testing
 
   try {
     log("🚀 Starting daily report task...");
@@ -49,7 +51,8 @@ function delay(ms) {
     // 3. Generate PDF
     const filePath = path.join(__dirname, "report.pdf");
     const doc = new PDFDocument();
-    doc.pipe(fs.createWriteStream(filePath));
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
 
     doc.fontSize(18).text("🧾 Daily System Report", { align: "center" }).moveDown();
     doc.fontSize(12).text(`🗓 Date: ${moment().format("YYYY-MM-DD HH:mm:ss")}`).moveDown();
@@ -59,17 +62,16 @@ function delay(ms) {
     doc.text(`🖥 RAM Used: ${ramUsedMB} MB`);
 
     doc.end();
-    log("📝 PDF generated successfully.");
 
-    // Wait for file to finish writing
-    await new Promise((res) => setTimeout(res, 3000));
+    await new Promise((resolve) => stream.on("finish", resolve));
+    log("📝 PDF generated successfully.");
 
     // 4. Email Setup
     let transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         user: "mahimakumari416@gmail.com",
-        pass: "aweunxcyacczatyg", // App Password
+        pass: "aweunxcyacczatyg", // App password
       },
       logger: true,
       debug: true,
