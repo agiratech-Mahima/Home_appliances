@@ -4,7 +4,17 @@ const nodemailer = require("nodemailer");
 const os = require("os");
 const path = require("path");
 const moment = require("moment");
-const { sequelize, Product } = require("../models");
+try {
+  var { sequelize, Product } = require("../models");
+} catch (err) {
+  fs.appendFileSync(
+    path.join(__dirname, "cron-log.txt"),
+    `[${new Date().toISOString()}] ❌ Failed to import models: ${err.message}\n`
+  );
+  console.error("❌ Failed to import models:", err);
+  process.exit(1);
+}
+
 
 // ✅ Log to file immediately
 const logFilePath = path.join(__dirname, "cron-log.txt");
