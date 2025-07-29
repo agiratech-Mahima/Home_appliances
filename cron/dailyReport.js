@@ -6,28 +6,18 @@ const path = require("path");
 const moment = require("moment");
 const { sequelize, Product } = require("../models");
 
-const logFile = path.join(__dirname, "cron-log.txt");
-const log = (msg) => {
-  const logMsg = `[${new Date().toISOString()}] ${msg}\n`;
-  fs.appendFileSync(logFile, logMsg);
-};
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-(async () => {
-  log("⏱️ Waiting 1 minute before report execution...");
-  await delay(60 * 1000); // 1 minute delay
-
+const generateAndSendReport = async () => {
   try {
-    log("🚀 Running daily report...");
+    console.log(" Starting daily report task...");
 
-    // 1. Fetch data
+    console.time("DB Queries");
+
     const totalProducts = await Product.count();
     const lowStockProducts = await Product.findAll({
       where: {
-        stock: { [sequelize.Sequelize.Op.lt]: 10 },
+        stock: {
+          [sequelize.Sequelize.Op.lt]: 10,
+        },
       },
     });
 
@@ -40,47 +30,75 @@ function delay(ms) {
       0
     );
 
-    const ramUsed = os.totalmem() - os.freemem();
-    const ramUsedMB = (ramUsed / 1024 / 1024).toFixed(2);
-    const dbSizeMB = (dbSize / 1024 / 1024).toFixed(2);
+    console.timeEnd("DB Queries");
 
-    // 2. Generate PDF
+    const ramUsed = os.totalmem() - os.freemem();
+    const ramUsedMB = (ramUsed / (1024 * 1024)).toFixed(2);
+    const dbSizeMB = (dbSize / (1024 * 1024)).toFixed(2);
+
+    console.log(" Generating PDF...");
+    console.time("PDF Generation");
+
     const filePath = path.join(__dirname, "report.pdf");
-    const doc = new PDFDocument();
+    const doc = new PDFDocument({ margin: 50 });
     doc.pipe(fs.createWriteStream(filePath));
 
-    doc.fontSize(18).text("🧾 Daily System Report", { align: "center" }).moveDown();
-    doc.fontSize(12).text(`🗓 Date: ${moment().format("YYYY-MM-DD HH:mm:ss")}`).moveDown();
-    doc.text(`📦 Total Products: ${totalProducts}`);
-    doc.text(`⚠️ Low Stock Products (<10): ${lowStockProducts.length}`).moveDown();
-    doc.text(`💾 Database Size: ${dbSizeMB} MB`);
-    doc.text(`🖥 RAM Used: ${ramUsedMB} MB`);
+    doc.fontSize(18).text("Daily System Report", { align: "center" }).moveDown();
+    doc.fontSize(12).text(`Date: ${moment().format("YYYY-MM-DD HH:mm:ss")}`).moveDown();
+    doc.text(`Total Products: ${totalProducts}`);
+    doc.text(`Low Stock Products (<10): ${lowStockProducts.length}`).moveDown();
+
+    if (lowStockProducts.length > 0) {
+      doc.fontSize(12).text("Low Stock Product List:", { underline: true }).moveDown(0.5);
+
+      lowStockProducts.forEach((product, index) => {
+        doc.text(`- ${product.name} (${product.stock} left)`);
+      });
+
+      doc.moveDown();
+    } else {
+      doc.text("✅ All products are sufficiently stocked.").moveDown();
+    }
+
+    doc.text(`Database Size: ${dbSizeMB} MB`);
+    doc.text(`RAM Used: ${ramUsedMB} MB`);
 
     doc.end();
-    log("✅ PDF generated.");
+    console.timeEnd("PDF Generation");
 
-    await new Promise((res) => setTimeout(res, 2000)); // ensure file write complete
+    console.log(" Sending email...");
+    console.time("Email Send");
 
-    // 3. Send email
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: "mahimakumari416@gmail.com",        // your Gmail
-        pass: "aweunxcyacczatyg",                  // your Gmail App Password
+        user: "mahimakumari416@gmail.com",
+        pass: "aweunxcyacczatyg",
       },
     });
 
-    const emailResult = await transporter.sendMail({
+    await transporter.sendMail({
       from: '"System Report" <mahimakumari416@gmail.com>',
       to: "mahimamahi1601@gmail.com",
-      subject: "📝 Daily System Report",
-      text: "Attached is your daily system report.",
-      attachments: [{ filename: "report.pdf", path: filePath }],
+      subject: "Daily System Report",
+      text: "Attached is your daily system report in PDF format.",
+      attachments: [
+        {
+          filename: "report.pdf",
+          path: filePath,
+        },
+      ],
     });
 
-    log(`📧 Email sent: ${emailResult.messageId}`);
+    console.timeEnd("Email Send");
+    console.log(" Report sent successfully.");
   } catch (err) {
-    log(`❌ Error: ${err.message}`);
-    console.error(err);
+    console.error("Failed to send report:", err);
   }
-})();
+};
+
+if (require.main === module) {
+  generateAndSendReport();
+}
+
+module.exports = generateAndSendReport;
